@@ -2,6 +2,10 @@
 
 This project is a simple server that implements the Model Context Protocol (MCP). It exposes a set of personal tools that can be used by a compatible MCP client or agent. The initial tool allows for adding notes to a local file.
 
+<a href="https://glama.ai/mcp/servers/@Myk3rinos/MCP">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Myk3rinos/MCP/badge" alt="Personal Tools Server MCP server" />
+</a>
+
 ## Features
 
 *   **Model Context Protocol (MCP) Server**: Built using the `@modelcontextprotocol/sdk`.
