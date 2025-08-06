@@ -5,7 +5,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 
-// Récupérer le chemin du répertoire utilisateur
+// Get the user directory path
 const userHomeDir = process.env.USER_HOME || os.homedir();
 
 // Create an MCP server
@@ -77,7 +77,7 @@ server.tool("create-user","Create a new user in the database", {
     try {
         const id = await createUser(params);
         return {
-            content: [{ type: "text", text: `User ${params.name} created successfully` }]
+            content: [{ type: "text", text: `User ${params.name} with id ${id} created successfully` }]
         }    
     } catch (error) {
         return {
@@ -86,10 +86,10 @@ server.tool("create-user","Create a new user in the database", {
     }  
 })
 
-server.tool("add-note", "Ajoute une nouvelle ligne au fichier de notes", {
-    text: z.string().describe("Le texte à ajouter au fichier de notes"),
+server.tool("add-note", "Add a new line to the notes file", {
+    text: z.string().describe("The text to add to the notes file"),
 }, {
-    title: "Ajouter une note",
+    title: "Add Note",
     readOnlyHint: false,
     destructiveHint: false,
     idempotentHint: false,
@@ -97,18 +97,18 @@ server.tool("add-note", "Ajoute une nouvelle ligne au fichier de notes", {
 }, async ({ text }) => {
     try {
         const notesDir = path.join(userHomeDir, 'Documents', 'notes');
-        // Créer le répertoire s'il n'existe pas
+        // Create the directory if it doesn't exist
         await fs.mkdir(notesDir, { recursive: true });
-        // Ajouter la nouvelle ligne au fichier
+        // Add the new line to the file
         await fs.appendFile(path.join(notesDir, 'note.txt'), `${new Date().toISOString()} - ${text}\n`);
         
         return {
-            content: [{ type: "text", text: `${text},Note ajoutée avec succès` }]
+            content: [{ type: "text", text: `${text},Note added successfully` }]
         };
     } catch (error) {
-        console.error("Erreur lors de l'ajout de la note:", error);
+        console.error("Error while adding the note:", error);
         return {
-            content: [{ type: "text", text: `Erreur lors de l'ajout de la note` }]
+            content: [{ type: "text", text: `Error while adding the note` }]
         };
     }
 })
