@@ -11,6 +11,7 @@ import { promisify } from "node:util";
 
 // Get the user directory path
 const userHomeDir = process.env.USER_HOME || os.homedir();
+const userName = process.env.USER || os.userInfo().username;
 
 // Create an MCP server
 const server = new McpServer({
@@ -27,6 +28,7 @@ const server = new McpServer({
   },
 });
 
+// Resource to get a user's details
 server.resource(
     "user-details",
     new ResourceTemplate("users://{userId}/profile", { list: undefined }),
@@ -65,6 +67,7 @@ server.resource(
     }
 )
 
+// Tool to create a new user
 server.tool("create-user","Create a new user in the database", {
     name: z.string(),
     email: z.string().email(),
@@ -79,7 +82,14 @@ server.tool("create-user","Create a new user in the database", {
     openWorldHint: true,
 }, async (params) => {
     try {
-        const id = await createUser(params);
+        const users = await import("./data/users.json", {
+            with: {type: "json" },
+        }).then((module) => module.default);
+        const id = users.length + 1;
+        users.push({ id, ...params });
+        await fs.writeFile("./src/data/users.json", JSON.stringify(users, null, 2));
+    
+        // const id = await createUser(params);
         return {
             content: [{ type: "text", text: `User ${params.name} with id ${id} created successfully` }]
         }    
@@ -90,76 +100,7 @@ server.tool("create-user","Create a new user in the database", {
     }  
 })
 
-// Outil pour changer le fond d'écran
-// server.tool("change-wallpaper", "Change the wallpaper to a random image from the wallpapers directory", {}, {
-//     title: "Change Wallpaper",
-//     readOnlyHint: false,
-//     destructiveHint: false,
-//     idempotentHint: false,
-//     openWorldHint: true,
-// }, async () => {
-//     const wallpapersDir = "/home/will/Images/wallpapers";
-    
-//     try {
-//         // Lire le contenu du dossier des wallpapers
-//         const files = await fs.readdir(wallpapersDir);
-        
-//         if (files.length === 0) {
-//             throw new Error("No wallpapers found in the directory");
-//         }
-        
-//         // Filtrer pour ne garder que les fichiers images
-//         const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif'];
-//         const imageFiles = files.filter(file => 
-//             imageExtensions.some(ext => file.toLowerCase().endsWith(ext))
-//         );
-        
-//         if (imageFiles.length === 0) {
-//             throw new Error("No valid images found in the wallpapers directory");
-//         }
-        
-//         // Choisir une image aléatoire
-//         const randomIndex = Math.floor(Math.random() * imageFiles.length);
-//         const selectedWallpaper = path.join(wallpapersDir, imageFiles[randomIndex]);
-        
-//         // Commande pour changer le fond d'écran (pour GNOME)
-//         const command = `gsettings set org.gnome.desktop.background picture-uri-dark "file:///home/will/Images/wallpapers/1.jpg"`;
-//         // const command = `gsettings set org.gnome.desktop.background picture-uri-dark "file://${selectedWallpaper}"`;
-//                         //  gsettings set org.gnome.desktop.background picture-uri-dark "file:///home/$USER/Images/wallpapers/1.jpg"
-
-//         const { stdout, stderr } = await execAsync(command, {
-//             timeout: 5000,
-//             env: {
-//                 ...process.env,
-//                 DISPLAY: ":0"
-//             }
-//         });
-//         // Exécuter la commande
-//         // const { stdout, stderr } = await execAsync(command);
-        
-//         if (stderr) {
-//             console.error("Error changing wallpaper:", stderr);
-//             throw new Error(stderr);
-//         }
-        
-//         return {
-//             success: true,
-//             message: `Wallpaper changed successfully: ${imageFiles[randomIndex]}`,
-//             wallpaper: selectedWallpaper,
-//             stdout,
-//             stderr
-//         };
-//     } catch (error: unknown) {
-//         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-//         console.error("Error in setRandomWallpaper:", error);
-//         return {
-//             success: false,
-//             message: `Error changing wallpaper: ${errorMessage}`,
-//             error: errorMessage
-//         };
-//     }
-// });
-
+// Tool to add a note
 server.tool("add-note", "Add a new line to the notes file", {
     text: z.string().describe("The text to add to the notes file"),
 }, {
@@ -186,7 +127,49 @@ server.tool("add-note", "Add a new line to the notes file", {
         };
     }
 })
-// Solution 1: Forcer le contexte utilisateur avec dbus
+
+// Tool to show files in a directory
+server.tool("show-files", "Show files in a directory with full french linux path", {
+    directory: z.string().optional().default(userHomeDir).describe("Directory to list")
+}, {
+    title: "Show Files",
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+}, async ({ directory }) => {
+    try {
+        // Utilisation de la commande ls avec l'option -la pour un affichage détaillé
+        const command = `ls -la "${directory}"`;
+        
+        const { stdout, stderr } = await execAsync(command, {
+            timeout: 5000,
+            env: {
+                ...process.env,
+                DISPLAY: ":0",
+                HOME: userHomeDir,
+                USER: userName
+            }
+        });
+        
+        return {
+            content: [{
+                type: "text",
+                text: `📁 Contenu de ${directory} :\n\`\`\`\n${stdout}\`\`\`\n${stderr ? `Erreurs :\n\`\`\`\n${stderr}\`\`\`` : ''}`
+            }]
+        };
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return {
+            content: [{
+                type: "text",
+                text: `❌ Erreur lors de l'exécution de la commande ls :\n\`\`\`\n${errorMessage}\`\`\``
+            }]
+        };
+    }
+});
+
+// Tool to change the wallpaper
 server.tool("change-wallpaper", "Change random wallpaper", {
     command: z.string().optional().default("gsettings")
 }, {
@@ -198,7 +181,7 @@ server.tool("change-wallpaper", "Change random wallpaper", {
 }, async ({ command }) => {
     try {        
         // Lire le contenu du dossier des wallpapers
-        const wallpapersDir = "/home/will/Images/wallpapers";
+        const wallpapersDir = path.join(userHomeDir, 'Images', 'wallpapers');
         const files = await fs.readdir(wallpapersDir);
         
         if (files.length === 0) {
@@ -227,8 +210,8 @@ server.tool("change-wallpaper", "Change random wallpaper", {
             env: {
                 ...process.env,
                 DISPLAY: ":0",
-                HOME: "/home/will",
-                USER: "will"
+                HOME: userHomeDir,
+                USER: userName
             }
         });
         
@@ -236,13 +219,14 @@ server.tool("change-wallpaper", "Change random wallpaper", {
         await execAsync(`DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus" gsettings set org.gnome.desktop.background picture-uri 'file://${selectedWallpaper}'`, {
             timeout: 5000,
             // shell: true,
-            env: { ...process.env, DISPLAY: ":0", HOME: "/home/will", USER: "will" }
+            env: { ...process.env, DISPLAY: ":0", HOME: userHomeDir, USER: userName }
         });
         
         return {
             content: [{
                 type: "text",
-                text: `✅ Wallpaper command executed with dbus context\nSTDOUT: ${stdout}\nSTDERR: ${stderr}\nCommand: ${fullCommand}`
+                // text: `✅ Wallpaper command executed with dbus context\nSTDOUT: ${stdout}\nSTDERR: ${stderr}\nCommand: ${fullCommand}`
+                text: `✅ Wallpaper command executed with dbus context\n`
             }]
         };
     } catch (error) {
@@ -255,124 +239,9 @@ server.tool("change-wallpaper", "Change random wallpaper", {
     }
 });
 
-
-// Ajoutez ce tool à votre serveur pour tester
-// server.tool("test-system", "Test system command execution", {
-//     command: z.string().optional().default("whoami")
-// }, {
-//     title: "Test System Command",
-//     readOnlyHint: true,
-//     destructiveHint: false,
-//     idempotentHint: true,
-//     openWorldHint: false,
-// }, async ({ command }) => {
-//     try {
-//         console.log(`Testing command: ${command}`);
-//         const { stdout, stderr } = await execAsync("whoami", {
-//             timeout: 5000,
-//             env: {
-//                 ...process.env,
-//                 DISPLAY: ":0"
-//             }
-//         });
-        
-//         return {
-//             content: [{
-//                 type: "text",
-//                 text: `✅ Command executed successfully\nSTDOUT: ${stdout}\nSTDERR: ${stderr}\nENV: ${JSON.stringify({
-//                     USER: process.env.USER,
-//                     HOME: process.env.HOME,
-//                     DISPLAY: process.env.DISPLAY,
-//                     // UID: process.getuid(),
-//                     // GID: process.getgid()
-//                 }, null, 2)}`
-//             }]
-//         };
-//     } catch (error) {
-//         return {
-//             content: [{
-//                 type: "text", 
-//                 text: `❌ Command failed: ${error}`
-//             }]
-//         };
-//     }
-// });
-async function createUser(user: {name: string, email: string, address: string, phone: string, password: string }) {
-    const users = await import("./data/users.json", {
-        with: {type: "json" },
-    }).then((module) => module.default);
-    const id = users.length + 1;
-    users.push({ id, ...user });
-    await fs.writeFile("./src/data/users.json", JSON.stringify(users, null, 2));
-    
-    return id;
-}
-
-
 const execAsync = promisify(exec);
 
-// async function setRandomWallpaper() {
-//     const wallpapersDir = "/home/will/Images/wallpapers";
-    
-//     try {
-//         // Lire le contenu du dossier des wallpapers
-//         const files = await fs.readdir(wallpapersDir);
-        
-//         if (files.length === 0) {
-//             throw new Error("No wallpapers found in the directory");
-//         }
-        
-//         // Filtrer pour ne garder que les fichiers images
-//         const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif'];
-//         const imageFiles = files.filter(file => 
-//             imageExtensions.some(ext => file.toLowerCase().endsWith(ext))
-//         );
-        
-//         if (imageFiles.length === 0) {
-//             throw new Error("No valid images found in the wallpapers directory");
-//         }
-        
-//         // Choisir une image aléatoire
-//         const randomIndex = Math.floor(Math.random() * imageFiles.length);
-//         const selectedWallpaper = path.join(wallpapersDir, imageFiles[randomIndex]);
-        
-//         // Commande pour changer le fond d'écran (pour GNOME)
-//         const command = `gsettings set org.gnome.desktop.background picture-uri-dark "file:///home/will/Images/wallpapers/1.jpg"`;
-//         // const command = `gsettings set org.gnome.desktop.background picture-uri-dark "file://${selectedWallpaper}"`;
-//                         //  gsettings set org.gnome.desktop.background picture-uri-dark "file:///home/$USER/Images/wallpapers/1.jpg"
 
-//         const { stdout, stderr } = await execAsync(command, {
-//             timeout: 5000,
-//             env: {
-//                 ...process.env,
-//                 DISPLAY: ":0"
-//             }
-//         });
-//         // Exécuter la commande
-//         // const { stdout, stderr } = await execAsync(command);
-        
-//         if (stderr) {
-//             console.error("Error changing wallpaper:", stderr);
-//             throw new Error(stderr);
-//         }
-        
-//         return {
-//             success: true,
-//             message: `Wallpaper changed successfully: ${imageFiles[randomIndex]}`,
-//             wallpaper: selectedWallpaper,
-//             stdout,
-//             stderr
-//         };
-//     } catch (error: unknown) {
-//         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-//         console.error("Error in setRandomWallpaper:", error);
-//         return {
-//             success: false,
-//             message: `Error changing wallpaper: ${errorMessage}`,
-//             error: errorMessage
-//         };
-//     }
-// }
 async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
