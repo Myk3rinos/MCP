@@ -84,7 +84,7 @@ server.tool("create-user", "Create a new user in the database", {
         return {
             content: [{
                     type: "text",
-                    text: `User ${params.name} with id ${id} created successfully`,
+                    text: `✓ User ${params.name} with id ${id} created successfully`,
                 }]
         };
     }
@@ -92,7 +92,7 @@ server.tool("create-user", "Create a new user in the database", {
         return {
             content: [{
                     type: "text",
-                    text: `User ${params.name} creation failed`,
+                    text: `✗ Error creating user ${params.name}: ${error}`,
                     error: error
                 }]
         };
@@ -117,16 +117,16 @@ server.tool("add-note", "Add a new line to the notes file", {
         return {
             content: [{
                     type: "text",
-                    text: `${text},Note added successfully`,
+                    text: `✓ Note added successfully`,
                 }]
         };
     }
     catch (error) {
-        console.error("Error while adding the note:", error);
+        console.error("✗ Error while adding the note:", error);
         return {
             content: [{
                     type: "text",
-                    text: `Error while adding the note`,
+                    text: `✗ Error while adding the note`,
                     error: error
                 }]
         };
@@ -169,7 +169,7 @@ server.tool("list-files", "List files in a directory with full french linux path
         return {
             content: [{
                     type: "text",
-                    text: `❌ Erreur lors de l'exécution de la commande ls :\n\`\`\`\n${errorMessage}\`\`\``,
+                    text: `✗ Erreur lors de l'exécution de la commande ls :\n\`\`\`\n${errorMessage}\`\`\``,
                     error: errorMessage
                 }]
         };
@@ -224,7 +224,7 @@ server.tool("change-wallpaper", "Change random wallpaper", {
                     type: "text",
                     // text: `✅ Wallpaper command executed with dbus context\nSTDOUT: ${stdout}\nSTDERR: ${stderr}\nCommand: ${fullCommand}`
                     // text: `✅ Wallpaper command executed with dbus context\n`
-                    text: `✅ Wallpaper changed successfully`
+                    text: `✓ Wallpaper changed successfully`
                 }]
         };
     }
@@ -232,7 +232,7 @@ server.tool("change-wallpaper", "Change random wallpaper", {
         return {
             content: [{
                     type: "text",
-                    text: `❌ Command failed: ${error}`,
+                    text: `✗ Command failed: ${error}`,
                     error: error
                 }]
         };
@@ -478,10 +478,10 @@ server.tool("get-weather", "Get current weather and a multi-day forecast for a c
                 out += `• ${dateLabel}: min/max ${d.temperature_2m_min[i]}${unitTemp} / ${d.temperature_2m_max[i]}${unitTemp}, precip ${d.precipitation_sum[i]} ${unitPrec}, max wind ${d.windspeed_10m_max[i]} ${unitWind}\n`;
             }
         }
-        return { content: [{ type: 'text', text: out || `No weather data available for ${locationLabel}` }] };
+        return { content: [{ type: 'text', text: out || `✗ No weather data available for ${locationLabel}` }] };
     }
     catch (err) {
-        return { content: [{ type: 'text', text: `Error while retrieving weather: ${err}`, error: err }] };
+        return { content: [{ type: 'text', text: `✗ Error while retrieving weather: ${err}`, error: err }] };
     }
 });
 // Tool to read a file and return its contents (English)
@@ -577,30 +577,6 @@ server.tool("write-file", "Write text content to a file (append or overwrite)", 
         return { content: [{ type: 'text', text: `Failed to write file: ${msg}`, error: msg }] };
     }
 });
-// Fonction helper pour décrire les codes météo Open-Meteo
-function getWeatherDescription(code) {
-    const descriptions = {
-        0: "☀️ Ciel dégagé",
-        1: "🌤️ Principalement dégagé",
-        2: "⛅ Partiellement nuageux",
-        3: "☁️ Couvert",
-        45: "🌫️ Brouillard",
-        48: "🌫️ Brouillard givrant",
-        51: "🌦️ Bruine légère",
-        53: "🌦️ Bruine modérée",
-        55: "🌦️ Bruine forte",
-        61: "🌧️ Pluie légère",
-        63: "🌧️ Pluie modérée",
-        65: "🌧️ Pluie forte",
-        71: "❄️ Neige légère",
-        73: "❄️ Neige modérée",
-        75: "❄️ Neige forte",
-        95: "⛈️ Orage",
-        96: "⛈️ Orage avec grêle légère",
-        99: "⛈️ Orage avec grêle forte"
-    };
-    return descriptions[code] || `Code ${code}`;
-}
 // List of forbidden commands (case insensitive)
 const BLACKLISTED_COMMANDS = [
     // Commandes de suppression
@@ -799,7 +775,7 @@ server.tool("execute-shell-command", "If user ask you a action on is french os l
             return {
                 content: [{
                         type: "text",
-                        text: "❌ Erreur : Cette commande est interdite pour des raisons de sécurité.",
+                        text: "✗ Erreur : Cette commande est interdite pour des raisons de sécurité.",
                         error: "Commande non autorisée"
                     }]
             };
@@ -848,7 +824,7 @@ server.tool("execute-shell-command", "If user ask you a action on is french os l
         return {
             content: [{
                     type: "text",
-                    text: `❌ Error executing command:\n${errorMessage}`,
+                    text: `✗ Error executing command:\n${errorMessage}`,
                     error: errorMessage
                 }]
         };

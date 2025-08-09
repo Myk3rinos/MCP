@@ -93,14 +93,14 @@ server.tool("create-user","Create a new user in the database", {
         return {
             content: [{
                 type: "text",
-                text: `User ${params.name} with id ${id} created successfully`,
+                text: `✓ User ${params.name} with id ${id} created successfully`,
             }]
         }    
     } catch (error) {
         return {
             content: [{
                 type: "text",
-                text: `User ${params.name} creation failed`,
+                text: `✗ Error creating user ${params.name}: ${error}`,
                 error: error
             }]
         }    
@@ -127,15 +127,15 @@ server.tool("add-note", "Add a new line to the notes file", {
         return {
             content: [{
                 type: "text",
-                text: `${text},Note added successfully`,
+                text: `✓ Note added successfully`,
             }]
         };
     } catch (error) {
-        console.error("Error while adding the note:", error);
+        console.error("✗ Error while adding the note:", error);
         return {
             content: [{
                 type: "text",
-                text: `Error while adding the note`,
+                text: `✗ Error while adding the note`,
                 error: error
             }]
         };
@@ -180,7 +180,7 @@ server.tool("list-files", "List files in a directory with full french linux path
         return {
             content: [{
                 type: "text",
-                text: `❌ Erreur lors de l'exécution de la commande ls :\n\`\`\`\n${errorMessage}\`\`\``,
+                text: `✗ Erreur lors de l'exécution de la commande ls :\n\`\`\`\n${errorMessage}\`\`\``,
                 error: errorMessage
             }]
         };
@@ -245,14 +245,14 @@ server.tool("change-wallpaper", "Change random wallpaper", {
                 type: "text",
                 // text: `✅ Wallpaper command executed with dbus context\nSTDOUT: ${stdout}\nSTDERR: ${stderr}\nCommand: ${fullCommand}`
                 // text: `✅ Wallpaper command executed with dbus context\n`
-                text: `✅ Wallpaper changed successfully`
+                text: `✓ Wallpaper changed successfully`
             }]
         };
     } catch (error) {
         return {
             content: [{
                 type: "text",
-                text: `❌ Command failed: ${error}`,
+                text: `✗ Command failed: ${error}`,
                 error: error
             }]
         };
@@ -524,9 +524,9 @@ server.tool("get-weather", "Get current weather and a multi-day forecast for a c
             }
         }
 
-        return { content: [{ type: 'text', text: out || `No weather data available for ${locationLabel}` }] };
+        return { content: [{ type: 'text', text: out || `✗ No weather data available for ${locationLabel}` }] };
     } catch (err) {
-        return { content: [{ type: 'text', text: `Error while retrieving weather: ${err}`, error: err as any }] };
+        return { content: [{ type: 'text', text: `✗ Error while retrieving weather: ${err}`, error: err as any }] };
     }
 });
 
@@ -817,33 +817,37 @@ server.tool("execute-shell-command", "If user ask you a action on is french os l
             const regex = new RegExp(`^\\s*${forbidden.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\*/g, '.*')}\\s*$`, 'i');
             return regex.test(normalizedCmd);
         });
-// Vérification corrigée de la blacklist
-// const isLSCommand = (command);
-const isBlacklisted = BLACKLISTED_COMMANDS.some(forbidden => {
-    try {
-        // Utiliser directement le pattern de la blacklist (qui contient déjà les regex)
-        const regex = new RegExp(forbidden, 'i');
-        return regex.test(command);
-    } catch (e) {
-        // Si la regex est malformée, considérer comme non-match
-        return false;
-    }
-});
+        
+        // Vérification corrigée de la blacklist
+        // const isLSCommand = (command);
+        const isBlacklisted = BLACKLISTED_COMMANDS.some(forbidden => {
+            try {
+                // Utiliser directement le pattern de la blacklist (qui contient déjà les regex)
+                const regex = new RegExp(forbidden, 'i');
+                return regex.test(command);
+            } catch (e) {
+                // Si la regex est malformée, considérer comme non-match
+                return false;
+            }
+        });
 
-// Vérifier aussi la commande normalisée (sans sudo)
-const isNormalizedBlacklisted = BLACKLISTED_COMMANDS.some(forbidden => {
-    try {
-        const regex = new RegExp(forbidden, 'i');
-        return regex.test(normalizedCmd);
-    } catch (e) {
-        return false;
-    }
-});
+        // Vérifier aussi la commande normalisée (sans sudo)
+        const isNormalizedBlacklisted = BLACKLISTED_COMMANDS.some(forbidden => {
+            try {
+                const regex = new RegExp(forbidden, 'i');
+                return regex.test(normalizedCmd);
+            } catch (e) {
+                return false;
+            }
+        });
+
+
+
         if (isBlacklisted || isNormalizedBlacklisted || isBlacklisted2 || isNormalizedBlacklisted2) {
             return {
                 content: [{
                     type: "text",
-                    text: "❌ Erreur : Cette commande est interdite pour des raisons de sécurité.",
+                    text: "✗ Erreur : Cette commande est interdite pour des raisons de sécurité.",
                     error: "Commande non autorisée"
                 }]
             };
@@ -893,7 +897,7 @@ const isNormalizedBlacklisted = BLACKLISTED_COMMANDS.some(forbidden => {
         return {
             content: [{
                 type: "text",
-                text: `❌ Error executing command:\n${errorMessage}`,
+                text: `✗ Error executing command:\n${errorMessage}`,
                 error: errorMessage
             }]
         };
